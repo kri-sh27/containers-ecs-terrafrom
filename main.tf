@@ -104,11 +104,11 @@ resource "aws_lb" "myalb" {
 }
 
 resource "aws_lb_target_group" "tg" {
-  name     = "mytg"
-  port     = 80
-  protocol = "HTTP"
+  name        = "mytg"
+  port        = 80
+  protocol    = "HTTP"
   target_type = "ip"
-  vpc_id   = aws_vpc.myvpc.id
+  vpc_id      = aws_vpc.myvpc.id
 
   health_check {
     path = "/"
