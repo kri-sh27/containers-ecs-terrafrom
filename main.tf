@@ -78,7 +78,18 @@ resource "aws_security_group" "websg" {
 }
 
 
+resource "aws_ecr_repository" "app" {
+  name                 = "aws-training-app"
+  image_tag_mutability = "MUTABLE"
 
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "aws-training-app"
+  }
+}
 
 
 resource "aws_lb" "myalb" {
@@ -119,4 +130,8 @@ resource "aws_lb_listener" "listener" {
 
 output "load_balancer_dns_name" {
   value = aws_lb.myalb.dns_name
+}
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.app.repository_url
 }

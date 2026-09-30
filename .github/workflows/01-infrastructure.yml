@@ -1,0 +1,75 @@
+name: 01 - Terraform Infrastructure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+
+jobs:
+  terraform:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------
+      # Checkout repository
+      # --------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --------------------------------
+      # Configure AWS using GitHub OIDC
+      # --------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------
+      # Setup Terraform
+      # --------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # --------------------------------
+      # Terraform Init
+      # --------------------------------
+      - name: Terraform Init
+        run: terraform init
+
+      # --------------------------------
+      # Terraform Format Check
+      # --------------------------------
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      # --------------------------------
+      # Terraform Validate
+      # --------------------------------
+      - name: Terraform Validate
+        run: terraform validate
+
+      # --------------------------------
+      # Terraform Plan
+      # --------------------------------
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      # --------------------------------
+      # Terraform Apply
+      # --------------------------------
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      # --------------------------------
+      # Show Terraform Outputs
+      # --------------------------------
+      - name: Terraform Outputs
+        run: terraform output

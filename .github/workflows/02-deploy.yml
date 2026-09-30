@@ -1,0 +1,115 @@
+name: 02 - Build and Deploy Application
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+
+  ECR_REPOSITORY: aws-training-app
+
+  ECS_CLUSTER: main-ecs-cluster
+  ECS_SERVICE: app-service
+  ECS_TASK_DEFINITION: app
+  CONTAINER_NAME: app
+
+jobs:
+
+  build-push-deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------
+      # Checkout code
+      # --------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --------------------------------
+      # Configure AWS
+      # --------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------
+      # Login to ECR
+      # --------------------------------
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # --------------------------------
+      # Build Docker image
+      # --------------------------------
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t $ECR_REPOSITORY:${{ github.sha }} .
+
+      # --------------------------------
+      # Tag Docker image
+      # --------------------------------
+      - name: Tag Docker image
+        run: |
+          docker tag \
+            $ECR_REPOSITORY:${{ github.sha }} \
+            ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+
+      # --------------------------------
+      # Push Docker image to ECR
+      # --------------------------------
+      - name: Push Docker image
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+
+      # --------------------------------
+      # Get ECS task definition
+      # --------------------------------
+      - name: Download ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $ECS_TASK_DEFINITION \
+            --query taskDefinition \
+            > task-definition.json
+
+      # --------------------------------
+      # Update image in task definition
+      # --------------------------------
+      - name: Update ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      # --------------------------------
+      # Deploy to ECS
+      # --------------------------------
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      # --------------------------------
+      # Deployment complete
+      # --------------------------------
+      - name: Deployment complete
+        run: |
+          echo "Application deployed successfully!"
+          echo "Image tag: ${{ github.sha }}"
