@@ -4,13 +4,13 @@ variable "vpc_id" {
 variable "private_subnets" {
   type = list(string)
 }
-variable "ecr_repository_url" {
-  type = string
-}
-variable "image_tag" {
-  type    = string
-  default = "latest"
-}
+# variable "ecr_repository_url" {
+#   type = string
+# }
+# variable "image_tag" {
+#   type    = string
+#   default = "latest"
+# }
 variable "sg_ecs" {
   type = string
 }
