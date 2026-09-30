@@ -9,18 +9,18 @@ resource "aws_ecs_task_definition" "app" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  container_definitions    = jsonencode([
+  container_definitions = jsonencode([
     {
-      name      = "app"
-    #   image     = "public.ecr.aws/nginx/nginx:trixie-perl"
-      image = "${var.ecr_repository_url}:${var.image_tag}"
+      name = "app"
+      #   image     = "public.ecr.aws/nginx/nginx:trixie-perl"
+      image     = "${var.ecr_repository_url}:${var.image_tag}"
       cpu       = 256
       memory    = 512
       essential = true
       portMappings = [
         {
           containerPort = 80
-          protocol="tcp"
+          protocol      = "tcp"
           hostPort      = 80
         }
       ]
@@ -29,7 +29,7 @@ resource "aws_ecs_task_definition" "app" {
 }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole_new"
+  name               = "ecsTaskExecutionRole_new"
   assume_role_policy = data.aws_iam_policy_document.assume_role_policy.json
 }
 
