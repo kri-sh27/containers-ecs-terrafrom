@@ -1,9 +1,125 @@
-name: 02 - Build and Deploy Application
+# name: 02 - Build and Deploy Application
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# env:
+#   AWS_REGION: ap-south-1
+
+#   ECR_REPOSITORY: aws-training-app
+
+#   ECS_CLUSTER: main-ecs-cluster
+#   ECS_SERVICE: app-service
+#   ECS_TASK_DEFINITION: app
+#   CONTAINER_NAME: app
+
+# jobs:
+
+#   build-push-deploy:
+
+#     runs-on: ubuntu-latest
+
+#     steps:
+
+#       # --------------------------------
+#       # Checkout code
+#       # --------------------------------
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       # --------------------------------
+#       # Configure AWS
+#       # --------------------------------
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       # --------------------------------
+#       # Login to ECR
+#       # --------------------------------
+#       - name: Login to Amazon ECR
+#         id: login-ecr
+#         uses: aws-actions/amazon-ecr-login@v2
+
+#       # --------------------------------
+#       # Build Docker image
+#       # --------------------------------
+#       - name: Build Docker image
+#         run: |
+#           docker build \
+#             -t $ECR_REPOSITORY:${{ github.sha }} .
+
+#       # --------------------------------
+#       # Tag Docker image
+#       # --------------------------------
+#       - name: Tag Docker image
+#         run: |
+#           docker tag \
+#             $ECR_REPOSITORY:${{ github.sha }} \
+#             ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+
+#       # --------------------------------
+#       # Push Docker image to ECR
+#       # --------------------------------
+#       - name: Push Docker image
+#         run: |
+#           docker push \
+#             ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+
+#       # --------------------------------
+#       # Get ECS task definition
+#       # --------------------------------
+#       - name: Download ECS task definition
+#         run: |
+#           aws ecs describe-task-definition \
+#             --task-definition $ECS_TASK_DEFINITION \
+#             --query taskDefinition \
+#             > task-definition.json
+
+#       # --------------------------------
+#       # Update image in task definition
+#       # --------------------------------
+#       - name: Update ECS task definition
+#         id: task-def
+#         uses: aws-actions/amazon-ecs-render-task-definition@v1
+#         with:
+#           task-definition: task-definition.json
+#           container-name: ${{ env.CONTAINER_NAME }}
+#           image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+#       # --------------------------------
+#       # Deploy to ECS
+#       # --------------------------------
+#       - name: Deploy to ECS
+#         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+#         with:
+#           task-definition: ${{ steps.task-def.outputs.task-definition }}
+#           service: ${{ env.ECS_SERVICE }}
+#           cluster: ${{ env.ECS_CLUSTER }}
+#           wait-for-service-stability: true
+
+#       # --------------------------------
+#       # Deployment complete
+#       # --------------------------------
+#       - name: Deployment complete
+#         run: |
+#           echo "Application deployed successfully!"
+#           echo "Image tag: ${{ github.sha }}"
+
+name: 02 - Build and Deploy to EKS
 
 on:
   push:
     branches:
-      - main
+      - feature/eks
 
 permissions:
   id-token: write
@@ -11,105 +127,118 @@ permissions:
 
 env:
   AWS_REGION: ap-south-1
-
   ECR_REPOSITORY: aws-training-app
-
-  ECS_CLUSTER: main-ecs-cluster
-  ECS_SERVICE: app-service
-  ECS_TASK_DEFINITION: app
-  CONTAINER_NAME: app
+  EKS_CLUSTER: main-eks-cluster
+  K8S_DEPLOYMENT: aws-training-app
+  K8S_CONTAINER: app
+  K8S_NAMESPACE: default
 
 jobs:
-
   build-push-deploy:
-
     runs-on: ubuntu-latest
 
     steps:
 
-      # --------------------------------
-      # Checkout code
-      # --------------------------------
+      # --------------------------------------------------
+      # 1. Checkout source code
+      # --------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # --------------------------------
-      # Configure AWS
-      # --------------------------------
+      # --------------------------------------------------
+      # 2. Authenticate GitHub Actions with AWS using OIDC
+      # --------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # --------------------------------
-      # Login to ECR
-      # --------------------------------
+      # --------------------------------------------------
+      # 3. Login to Amazon ECR
+      # --------------------------------------------------
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # --------------------------------
-      # Build Docker image
-      # --------------------------------
+      # --------------------------------------------------
+      # 4. Build Docker image
+      # --------------------------------------------------
       - name: Build Docker image
         run: |
           docker build \
             -t $ECR_REPOSITORY:${{ github.sha }} .
 
-      # --------------------------------
-      # Tag Docker image
-      # --------------------------------
+      # --------------------------------------------------
+      # 5. Tag Docker image
+      # --------------------------------------------------
       - name: Tag Docker image
         run: |
           docker tag \
             $ECR_REPOSITORY:${{ github.sha }} \
             ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
 
-      # --------------------------------
-      # Push Docker image to ECR
-      # --------------------------------
+      # --------------------------------------------------
+      # 6. Push image to ECR
+      # --------------------------------------------------
       - name: Push Docker image
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
 
-      # --------------------------------
-      # Get ECS task definition
-      # --------------------------------
-      - name: Download ECS task definition
+      # --------------------------------------------------
+      # 7. Configure kubectl for EKS
+      # --------------------------------------------------
+      - name: Update kubeconfig
         run: |
-          aws ecs describe-task-definition \
-            --task-definition $ECS_TASK_DEFINITION \
-            --query taskDefinition \
-            > task-definition.json
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $EKS_CLUSTER
 
-      # --------------------------------
-      # Update image in task definition
-      # --------------------------------
-      - name: Update ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+      # --------------------------------------------------
+      # 8. Verify EKS cluster
+      # --------------------------------------------------
+      - name: Verify Kubernetes cluster
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
 
-      # --------------------------------
-      # Deploy to ECS
-      # --------------------------------
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+      # --------------------------------------------------
+      # 9. Apply Kubernetes manifests
+      # --------------------------------------------------
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
 
-      # --------------------------------
-      # Deployment complete
-      # --------------------------------
+      # --------------------------------------------------
+      # 10. Update deployment image
+      # --------------------------------------------------
+      - name: Update Kubernetes deployment image
+        run: |
+          kubectl set image deployment/$K8S_DEPLOYMENT \
+            $K8S_CONTAINER=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }} \
+            -n $K8S_NAMESPACE
+
+      # --------------------------------------------------
+      # 11. Wait for rollout
+      # --------------------------------------------------
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status \
+            deployment/$K8S_DEPLOYMENT \
+            -n $K8S_NAMESPACE \
+            --timeout=5m
+
+      # --------------------------------------------------
+      # 12. Verify deployment
+      # --------------------------------------------------
+      - name: Verify application
+        run: |
+          kubectl get deployment -n $K8S_NAMESPACE
+          kubectl get pods -n $K8S_NAMESPACE
+          kubectl get services -n $K8S_NAMESPACE
+
       - name: Deployment complete
         run: |
-          echo "Application deployed successfully!"
+          echo "EKS deployment completed successfully!"
           echo "Image tag: ${{ github.sha }}"

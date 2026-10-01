@@ -129,20 +129,36 @@ resource "aws_lb_listener" "listener" {
 }
 
 
-module "ecs" {
-  source = "./module/ecs"
+# module "ecs" {
+#   source = "./module/ecs"
+
+#   vpc_id = aws_vpc.myvpc.id
+
+#   private_subnets = [
+#     aws_subnet.sub1.id,
+#     aws_subnet.sub2.id
+#   ]
+
+#   sg_ecs           = aws_security_group.websg.id
+#   alb_target_group = aws_lb_target_group.tg.arn
+
+# }
+
+
+module "eks" {
+  source = "./module/eks"
+
+  cluster_name       = "main-eks-cluster"
+  kubernetes_version = "1.36"
 
   vpc_id = aws_vpc.myvpc.id
 
-  private_subnets = [
+  subnet_ids = [
     aws_subnet.sub1.id,
     aws_subnet.sub2.id
   ]
-
-  sg_ecs           = aws_security_group.websg.id
-  alb_target_group = aws_lb_target_group.tg.arn
-
 }
+
 
 output "load_balancer_dns_name" {
   value = aws_lb.myalb.dns_name

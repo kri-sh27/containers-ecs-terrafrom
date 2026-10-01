@@ -1,0 +1,61 @@
+# apiVersion: apps/v1
+# kind: Deployment
+
+# metadata:
+#   name: aws-training-app
+
+# spec:
+#   replicas: 2
+
+#   selector:
+#     matchLabels:
+#       app: aws-training-app
+
+#   template:
+#     metadata:
+#       labels:
+#         app: aws-training-app
+
+#     spec:
+#       containers:
+#         - name: app
+
+#           image: 929897439921.dkr.ecr.ap-south-1.amazonaws.com/aws-training-app:IMAGE_TAG
+
+#           ports:
+#             - containerPort: 80
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: aws-training-app
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: aws-training-app
+
+  template:
+    metadata:
+      labels:
+        app: aws-training-app
+
+    spec:
+      containers:
+        - name: app
+          image: 929897439921.dkr.ecr.ap-south-1.amazonaws.com/aws-training-app:placeholder
+
+          ports:
+            - containerPort: 80
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
