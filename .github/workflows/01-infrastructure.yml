@@ -59,8 +59,20 @@ jobs:
       # --------------------------------
       # Terraform Plan
       # --------------------------------
+      # - name: Terraform Plan
+      #   run: terraform plan -out=tfplan
+
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: |
+          set -o pipefail
+          terraform plan -out=tfplan 2>&1 | tee terraform-plan.log
+
+      - name: Upload Terraform Plan Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-log
+          path: terraform-plan.log
 
       # --------------------------------
       # Terraform Apply
